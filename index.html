@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>품사 나라의 탐험</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* [기본 설정] */
+        body { 
+            font-family: 'Nanum Gothic', sans-serif; 
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); 
+            text-align: center; padding: 30px 20px; margin: 0; min-height: 100vh;
+        }
+        
+        h1 { font-family: 'Jua', sans-serif; color: #4a3f35; font-size: 45px; margin-bottom: 5px; }
+        p.subtitle { color: #666; font-size: 18px; margin-bottom: 30px; font-weight: bold; }
+
+        /* [1단계: 복습 영상 팝업 스타일] */
+        #videoModal {
+            display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+            justify-content: center; align-items: center; z-index: 600;
+        }
+        .video-content {
+            position: relative; /* 닫기 버튼의 기준점이 됩니다 */
+            background: white; padding: 35px; border-radius: 30px; width: 800px; max-width: 95%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        /* ✖ 우측 상단 닫기 버튼 추가 */
+        .btn-close-top {
+            position: absolute; top: 15px; right: 20px;
+            background: none; border: none; font-size: 28px; color: #aaa;
+            cursor: pointer; transition: 0.2s; font-family: 'Jua', sans-serif;
+        }
+        .btn-close-top:hover { color: #ff6b6b; transform: scale(1.1); }
+
+        .video-header { font-family: 'Jua', sans-serif; font-size: 32px; color: #4a3f35; margin-bottom: 10px; margin-top: 10px; }
+        
+        /* 영상 화면 비율 유지를 위한 컨테이너 (16:9 비율) */
+        .iframe-container {
+            position: relative; width: 100%; padding-bottom: 56.25%; height: 0;
+            overflow: hidden; border-radius: 15px; border: 3px solid #ff823a; margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .iframe-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
+        }
+
+        /* [2단계: 규칙 안내 팝업 스타일] */
+        #welcomeModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+            justify-content: center; align-items: center; z-index: 500;
+        }
+        .welcome-content {
+            background: white; padding: 40px; border-radius: 30px; width: 550px; max-width: 90%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: left;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .welcome-header { font-family: 'Jua', sans-serif; font-size: 35px; color: #ff823a; text-align: center; margin-bottom: 25px; }
+        .rule-list { list-style: none; padding: 0; margin-bottom: 30px; }
+        .rule-list li { 
+            font-size: 18px; color: #333; margin-bottom: 15px; line-height: 1.6; 
+            background: #fff9f0; padding: 12px 15px; border-radius: 12px; border-left: 5px solid #ff823a;
+        }
+        .teacher-sign { text-align: right; font-family: 'Jua', sans-serif; font-size: 20px; color: #666; margin-top: 20px; }
+        
+        /* 공통 버튼 디자인 */
+        .btn-action { 
+            display: block; width: 100%; background: linear-gradient(135deg, #ff823a 0%, #ff6b6b 100%);
+            color: white; font-size: 22px; padding: 15px; border-radius: 40px; border: none; cursor: pointer;
+            font-family: 'Jua', sans-serif; box-shadow: 0 5px 15px rgba(255, 130, 58, 0.3); transition: 0.2s;
+        }
+        .btn-action:hover { transform: scale(1.02); filter: brightness(1.05); }
+
+        /* [입력 및 보드 레이아웃] */
+        .info-section { margin-bottom: 30px; }
+        input[type="text"] { 
+            padding: 12px 20px; font-size: 16px; border-radius: 30px; border: 2px solid #b8c6db;
+            text-align: center; outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); font-weight: bold;
+        }
+        .board { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; max-width: 950px; margin: 0 auto; z-index: 10; }
+
+        /* [타일 스타일] */
+        .cell { 
+            width: 150px; height: 160px; background-color: #fff; border: 4px solid #f6d365; border-radius: 20px; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; padding: 10px; box-sizing: border-box; box-shadow: 0 8px 15px rgba(0,0,0,0.1); 
+            transition: all 0.3s; position: relative; overflow: hidden;
+        }
+        .cell.locked { background-color: #f1f2f6; border-color: #ced6e0; cursor: not-allowed; filter: grayscale(100%); opacity: 0.7; }
+        .cell.completed { background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%); border-color: #7bc47f; }
+        .cell.current { border-color: #ff9f43; background-color: #fffaf0; animation: pulse 2s infinite; }
+        .cell-emoji { font-size: 35px; margin-bottom: 8px; }
+        .cell-title { font-family: 'Jua', sans-serif; font-size: 20px; color: #333; }
+        .page-tag { position: absolute; top: 8px; left: 8px; background-color: #ff6b6b; color: white; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+
+        /* [모달창 스타일] */
+        #questionModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: white; padding: 40px; border-radius: 25px; width: 450px; max-width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.3); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .modal-header { font-family: 'Jua', sans-serif; font-size: 28px; color: #ff9f43; margin-bottom: 10px; border-bottom: 2px dashed #eee; padding-bottom: 10px; }
+        textarea { width: 100%; height: 100px; padding: 15px; border-radius: 15px; border: 2px solid #dfe4ea; resize: none; font-size: 16px; font-family: inherit; }
+
+        /* [제출 및 꽃가루] */
+        #submitSection { margin-top: 50px; display: none; padding: 40px; background: white; border-radius: 20px; border: 4px dashed #7bc47f; }
+        #confettiCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 200; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 159, 67, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); } }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        .btn-save { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: #d63031; border: none; padding: 12px 25px; border-radius: 30px; font-family: 'Jua'; cursor: pointer; font-size: 18px; margin-top: 15px; }
+        .btn-close { background-color: #f1f2f6; color: #57606f; border: none; padding: 12px 25px; border-radius: 30px; font-family: 'Jua'; cursor: pointer; font-size: 18px; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="videoModal">
+        <div class="video-content">
+            <button class="btn-close-top" onclick="closeVideoAndShowRules()" title="영상 건너뛰기">✖</button>
+            
+            <div class="video-header">📺 품사 개념 복습하기</div>
+            <p style="font-size: 16px; color: #555; margin: 5px 0; font-weight: bold;">
+                탐험을 떠나기 전, 아래 영상을 보며 배운 내용을 복습해 보아요!<br>
+                <span style="font-size: 14px; font-weight: normal;">(이미 내용을 잘 안다면 우측 상단의 X를 눌러 바로 시작하세요!)</span>
+            </p>
+            <div class="iframe-container">
+                <iframe src="https://pubvw.qmt.kr/web_document/455081/3/grammar_game/index.html?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3B1YnZ3LnFtdC5rciIsImV4cCI6MTc4MDk4OTYyNjE5MCwiaWF0IjoxNzgwOTg2MDI2MTkwLCJwYXRoIjoid2ViX2RvY3VtZW50LzQ1NTA4MSJ9.vjg-eMZdrc-kkpf9j25_SvOk4Kn2Xop_FjUR92TesXE" allowfullscreen></iframe>
+            </div>
+            <button class="btn-action" onclick="closeVideoAndShowRules()">복습 완료! 게임 규칙 보기 ➡️</button>
+        </div>
+    </div>
+
+    <div id="welcomeModal">
+        <div class="welcome-content">
+            <div class="welcome-header">🗺️ 품사 나라 탐험 가이드</div>
+            <ul class="rule-list">
+                <li><strong>규칙 1.</strong> 학번 입력 란에는 자신의 닉네임을 써주세요!</li>
+                <li><strong>규칙 2.</strong> 순서대로 퀴즈에 답변을 달아요.</li>
+                <li><strong>규칙 3.</strong> 위에 나온 내용은 교과서 페이지예요.</li>
+                <li><strong>규칙 4.</strong> 교과서 쪽 번호는 어려울 때 답을 찾는 힌트예요.</li>
+                <li><strong>규칙 5.</strong> 먼저 도착 + 정답을 많이 맞힌 사람이 우승!</li>
+            </ul>
+            <p style="text-align: center; color: #4a3f35; font-weight: bold;">여러분의 성공을 응원할게요!</p>
+            <div class="teacher-sign">- 국어쌤 -</div>
+            <button class="btn-action" onclick="closeWelcome()">모험 시작하기 🎮</button>
+        </div>
+    </div>
+
+    <canvas id="confettiCanvas"></canvas>
+
+    <h1>🗺️ 품사 나라의 탐험</h1>
+    <p class="subtitle">모든 퀘스트를 깨고 품사 마스터가 되어보세요!</p>
+    
+    <div class="info-section">
+        <input type="text" id="studentInfo" placeholder="닉네임을 입력해 주세요!" size="35">
+    </div>
+
+    <div class="board" id="gameBoard"></div>
+
+    <div id="submitSection">
+        <h2 style="font-family: 'Jua';">🎉 퀘스트 올 클리어! 🎉</h2>
+        <p style="font-size: 18px; color: #555; margin-bottom: 25px;">선생님께 탐험 일지를 전송하고 우승에 도전하세요!</p>
+        <button style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #0d5c31; font-size: 24px; padding: 15px 40px; border-radius: 40px; border: none; font-family: 'Jua'; cursor: pointer;" onclick="submitToGoogleSheet()" id="finalBtn">데이터 전송하기 🚀</button>
+    </div>
+
+    <div id="questionModal">
+        <div class="modal-content">
+            <div class="modal-header" id="modalTitle">스테이지</div>
+            <div id="modalQuestion" style="font-size: 18px; font-weight: bold; color: #2f3542; line-height: 1.5; margin: 20px 0;">질문 내용</div>
+            <textarea id="answerInput" placeholder="이곳에 정답을 적어주세요!"></textarea>
+            <br>
+            <button class="btn-save" onclick="saveAnswer()">저장하고 다음으로 ✨</button>
+            <button class="btn-close" onclick="closeModal()">닫기</button>
+        </div>
+    </div>
+
+    <script>
+        const gameData = [
+            { id: "q1", page: "124쪽", emoji: "📖", title: "품사의 뜻", question: "품사의 뜻을 말해 보세요." },
+            { id: "q2", page: "126쪽", emoji: "🧩", title: "분류 기준", question: "품사의 분류 기준 세 가지를 모두 말해 보세요." },
+            { id: "q3", page: "130쪽", emoji: "🏷️", title: "명사", question: "명사 다섯 개를 7초 안에 말해 보세요." },
+            { id: "q4", page: "131쪽", emoji: "👈", title: "대명사", question: "대명사를 사용하여 교실의 물건 세 개를 가리켜 보세요." },
+            { id: "q5", page: "131쪽", emoji: "🔢", title: "수사", question: "수사를 사용하여 우리 모둠원을 표현해 보세요." },
+            { id: "q6", page: "134쪽", emoji: "🔗", title: "조사", question: "조사의 기능을 설명해 보세요." },
+            { id: "q7", page: "137쪽", emoji: "🏃", title: "부사", question: "'___ 먹었다'에 알맞은 부사를 넣어보세요." },
+            { id: "q8", page: "138쪽", emoji: "😲", title: "감탄사", question: "감탄사의 특징을 말해 보세요." },
+            { id: "q9", page: "133쪽", emoji: "💃", title: "동사", question: "동사 다섯 개를 7초 안에 말해 보세요." },
+            { id: "q10", page: "133쪽", emoji: "🎨", title: "형용사", question: "형용사 다섯 개를 7초 안에 말해 보세요." },
+            { id: "q11", page: "136쪽", emoji: "🎀", title: "관형사", question: "관형사를 사용하여 문장을 만들어 보세요." },
+            { id: "q12", page: "133쪽", emoji: "⚖️", title: "동사와 형용사", question: "동사와 형용사의 가장 큰 차이점은 무엇인가요?" }
+        ];
+
+        let currentStep = 0; 
+        let selectedStep = 0; 
+        let answers = {}; 
+
+        // 영상 팝업 닫고 규칙 팝업 띄우기 (X 버튼과 하단 버튼 모두 이 함수를 사용합니다)
+        function closeVideoAndShowRules() {
+            document.getElementById('videoModal').style.display = 'none';
+            document.getElementById('welcomeModal').style.display = 'flex';
+        }
+
+        // 규칙 팝업 닫고 본 게임 시작하기
+        function closeWelcome() {
+            document.getElementById('welcomeModal').style.display = 'none';
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            gameData.forEach((data, index) => {
+                const cell = document.createElement('div');
+                let cellClass = 'cell';
+                if (index > currentStep) cellClass += ' locked';
+                else if (index < currentStep) cellClass += ' completed';
+                else if (index === currentStep) cellClass += ' current';
+                cell.className = cellClass;
+                let cellHTML = `<span class="page-tag">${data.page}</span>`;
+                cellHTML += index < currentStep ? `<div class="cell-emoji">✅</div>` : `<div class="cell-emoji">${data.emoji}</div>`;
+                cellHTML += `<div class="cell-title">${data.title}</div><div class="cell-progress">(${index + 1}/12)</div>`;
+                cell.innerHTML = cellHTML;
+                if (index <= currentStep) { cell.onclick = () => openModal(index); }
+                board.appendChild(cell);
+            });
+            if (currentStep >= gameData.length) {
+                document.getElementById('submitSection').style.display = 'block';
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
+        }
+
+        function openModal(index) {
+            selectedStep = index;
+            const currentData = gameData[index];
+            document.getElementById('modalTitle').innerText = `${currentData.emoji} ${index + 1}. ${currentData.title}`;
+            document.getElementById('modalQuestion').innerText = currentData.question;
+            document.getElementById('answerInput').value = answers[currentData.id] || '';
+            document.getElementById('questionModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('answerInput').focus(), 100);
+        }
+
+        function saveAnswer() {
+            const answer = document.getElementById('answerInput').value.trim();
+            if (answer === '') { alert("답을 입력해 주세요!"); return; }
+            answers[gameData[selectedStep].id] = answer;
+            if (selectedStep === currentStep) currentStep++;
+            closeModal();
+            renderBoard();
+        }
+
+        function closeModal() { document.getElementById('questionModal').style.display = 'none'; }
+
+        function submitToGoogleSheet() {
+            const studentInfo = document.getElementById('studentInfo').value.trim();
+            if (studentInfo === '') { alert("닉네임을 입력해 주세요!"); return; }
+            const formData = new FormData();
+            formData.append("학생정보", studentInfo);
+            gameData.forEach(data => formData.append(data.title, answers[data.id]));
+            const btn = document.getElementById('finalBtn');
+            btn.innerText = "전송 중... 🚀"; btn.disabled = true;
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIgFKZ_GOsXBsGAvHnzyA28B-qQD9v9axECdxozIGrTT4oITZKiW0S4ivIh349VI0/exec";
+            fetch(SCRIPT_URL, { method: 'POST', body: formData, mode: 'no-cors' })
+                .then(() => {
+                    alert('🎉 선생님께 결과가 전송되었습니다! 수고하셨습니다.');
+                    btn.innerText = "전송 완료 🌟";
+                    startConfetti();
+                }).catch(() => {
+                    alert('오류 발생! 다시 시도해 주세요.');
+                    btn.disabled = false;
+                });
+        }
+
+        function startConfetti() {
+            const canvas = document.getElementById('confettiCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            let pieces = [];
+            const colors = ['#ff9a9e', '#fecfef', '#f6d365', '#fda085', '#a18cd1', '#84fab0'];
+            for(let i=0; i<150; i++) {
+                pieces.push({
+                    x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 10 + 5, color: colors[Math.floor(Math.random() * colors.length)],
+                    speed: Math.random() * 3 + 2, rotation: Math.random() * 360, rotSpeed: Math.random() * 10 - 5
+                });
+            }
+            function update() {
+                ctx.clearRect(0,0, canvas.width, canvas.height);
+                pieces.forEach(p => {
+                    p.y += p.speed; p.rotation += p.rotSpeed;
+                    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation * Math.PI / 180);
+                    ctx.fillStyle = p.color; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+                    ctx.restore();
+                    if(p.y > canvas.height) p.y = -20;
+                });
+                requestAnimationFrame(update);
+            }
+            update();
+        }
+        renderBoard();
+    </script>
+</body>
+</html>
